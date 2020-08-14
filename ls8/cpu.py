@@ -10,18 +10,43 @@ class CPU:
         self.ram = [0] * 256 # Bytes of memory
         self.reg = [0] * 8 # Registers
         self.pc = 0 # Program Counter
-        self.running = False
-        self.HLT = '00000001'
-        self.LDI = '10000010' 
-        self.PRN = '01000111' 
+        self.stack = self.reg[7] # Stack pointer.
+        self.running = True
+        self.HLT = '1'
+        self.LDI = '10000010'
+        self.PRN = '1000111'
+        self.MUL = '10100010'
+        # self.PUSH = '01000101'
+        # self.POP = '01000110'
+        # self.ADD = '10100000'
 
+        
     def load(self):
         """Load a program into memory."""
 
         address = 0
 
-        # For now, we've just hardcoded a program:
+        #For now, we've just hardcoded a program:
+        try: 
+            with open(sys.argv[1]) as file: 
+                for line in file: 
+                    comment_split = line.split('#')
 
+                    possible_num = comment_split[0]
+
+                    if possible_num == '':
+                        continue 
+                    
+                    if possible_num[0] == '1' or possible_num[0] == '0':
+                        num = possible_num[:8]
+
+                    #print(f'{num}: {int(num,2)}')
+
+                    self.ram[address] = int(num,2)
+                    address += 1
+        except FileNotFoundError: 
+            print(f'{sys.argv[0]}: {sys.argv[1]} not found')
+        
         program = [
             # From print8.ls8
             0b10000010, # LDI R0,8
@@ -36,15 +61,17 @@ class CPU:
             self.ram[address] = instruction
             address += 1
 
-
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
         #elif op == "SUB": etc
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
+    
 
     def trace(self):
         """
@@ -65,35 +92,61 @@ class CPU:
             print(" %02X" % self.reg[i], end='')
 
         print()
+    
+    #def PUSH(self):
+            # '''
+         #Push the value in the given register on the stack.
+         #1. Decrement the `SP`.
+         #2. Copy the value in the given register to the address pointed to by
+         #`SP`.
+         #'''
+         # Decrement SP
+         #self.stack -= 1
 
-    def ram_read(self, addr):
-    # MAR: Memory Address Register contains the address that is being read or written to
-        return self.ram[addr]
+         # Push the value in the given register on the stack.
+         #value = self.reg[self.operand_a]
+         #self.ram[self.stack] = value
+         #self.pc += 2
 
-    def ram_write(self, mdr, addr):
+    def ram_read(self, MAR):
+        # MAR: Memory Address Register contains the address that is being read or written to
+        return self.ram[MAR]
+
+    def ram_write(self, MDR, MAR):
         # MDR: Memory Data Register contains the data that was read or the data to write
-        self.ram[addr] = mdr
+        self.ram[MAR] = MDR
 
     def run(self):
         """Run the CPU."""
-        self.running = True
         HLT = self.HLT
         LDI = self.LDI
         PRN = self.PRN
+        MUL = self.MUL
+        
+
+        self.running = True
 
         while self.running:
-            command = self.ram[self.pc]
-            operand_a = self.ram_read(self.pc + 1)
-            operand_b = self.ram_read(self.pc + 2)
+            command = bin(self.ram_read(self.pc))[2:] 
+            operand_a = self.ram_read(self.pc + 1) 
+            operand_b = self.ram_read(self.pc + 2) 
+            
+            #update program counter
+            
+            #self.pc += 1 + (command >> 6)
+            add_counter = (int(command, 2) >> 6) + 1
+           
             if command == LDI:
-                print(operand_b)
-            if command == HLT:
-                self.running = False
-                self.pc = 0
-                print ("Exit Program")
-            if command == PRN:
-                #self.ram_read()
-                #self.pc += 2
-                print(operand_a)
+                self.reg[operand_a] = operand_b
+            
+            elif command == MUL:
+                self.alu("MUL", operand_a, operand_b)
 
- 
+            elif command == PRN:
+                print(self.reg[operand_a])
+
+            elif command == HLT:
+                self.running = False
+            
+            self.pc += add_counter  
+
