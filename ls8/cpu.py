@@ -10,17 +10,68 @@ class CPU:
         self.ram = [0] * 256 # Bytes of memory
         self.reg = [0] * 8 # Registers
         self.pc = 0 # Program Counter
-        self.stack = self.reg[7] # Stack pointer.
+        self.sp = self.reg[7] # Stack pointer.
+        self.reg[7] = '0xF4'
         self.running = True
-        self.HLT = '1'
-        self.LDI = '10000010'
-        self.PRN = '1000111'
-        self.MUL = '10100010'
+        # self.HLT = '1'
+        # self.LDI = '10000010'
+        # self.PRN = '1000111'
+        # self.MUL = '10100010'
         # self.PUSH = '01000101'
         # self.POP = '01000110'
         # self.ADD = '10100000'
+        self.operand_a = 0
+        self.operand_b = 0
+        # self.CALL = '01010000'
+        # self.RET = '00010001'
 
-        
+        self.branch_table = {
+            0b00000001: self.HLT,
+            0b10000010: self.LDI,
+            0b01000111: self.PRN,
+            0b10100010: self.MUL,
+            0b01000101: self.PUSH,
+            0b01000110: self.POP,
+            0b01010000: self.CALL,
+            0b00010001: self.RET,
+            0b10100000: self.ADD,
+        }
+
+    def HLT(self):
+        self.running = False
+    
+    def LDI(self):
+        '''
+        Set the value of a register to an integer.
+        '''
+        self.reg[self.operand_a] = self.operand_b
+        self.pc += 3
+
+    def PRN(self):
+        '''
+        Print numeric value stored in the given register.
+        Print to the console the decimal integer value that is stored in the given
+        register.
+        '''
+        print(self.reg[self.operand_a])
+        self.pc += 2
+
+    def MUL(self):
+        '''
+        Multiply the values in two registers together and store the result in registerA.
+        '''
+        self.alu("MUL", self.operand_a, self.operand_b)
+        self.pc += 3
+
+    def ADD(self):
+        '''
+        *This is an instruction handled by the ALU.*
+        `ADD registerA registerB`
+        Add the value in two registers and store the result in registerA.
+        '''
+        self.alu("ADD", self.operand_a, self.operand_b)
+        self.pc += 3
+
     def load(self):
         """Load a program into memory."""
 
@@ -42,24 +93,25 @@ class CPU:
 
                     #print(f'{num}: {int(num,2)}')
 
-                    self.ram[address] = int(num,2)
+                    self.ram[address] = int(num, 2)
                     address += 1
+
         except FileNotFoundError: 
             print(f'{sys.argv[0]}: {sys.argv[1]} not found')
         
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
+        # program = [
+        #     # From print8.ls8
+        #     0b10000010, # LDI R0,8
+        #     0b00000000,
+        #     0b00001000,
+        #     0b01000111, # PRN R0
+        #     0b00000000,
+        #     0b00000001, # HLT
+        # ]
 
-        for instruction in program:
-            self.ram[address] = instruction
-            address += 1
+        # for instruction in program:
+        #     self.ram[address] = instruction
+        #     address += 1
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -92,21 +144,6 @@ class CPU:
             print(" %02X" % self.reg[i], end='')
 
         print()
-    
-    #def PUSH(self):
-            # '''
-         #Push the value in the given register on the stack.
-         #1. Decrement the `SP`.
-         #2. Copy the value in the given register to the address pointed to by
-         #`SP`.
-         #'''
-         # Decrement SP
-         #self.stack -= 1
-
-         # Push the value in the given register on the stack.
-         #value = self.reg[self.operand_a]
-         #self.ram[self.stack] = value
-         #self.pc += 2
 
     def ram_read(self, MAR):
         # MAR: Memory Address Register contains the address that is being read or written to
@@ -118,35 +155,102 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        HLT = self.HLT
-        LDI = self.LDI
-        PRN = self.PRN
-        MUL = self.MUL
-        
+        # HLT = self.HLT
+        # LDI = self.LDI
+        # PRN = self.PRN
+        # MUL = self.MUL
 
         self.running = True
 
         while self.running:
-            command = bin(self.ram_read(self.pc))[2:] 
-            operand_a = self.ram_read(self.pc + 1) 
-            operand_b = self.ram_read(self.pc + 2) 
+            #command = bin(self.ram_read(self.pc))[2:] 
+            ir = self.ram[self.pc]
+            self.operand_a = self.ram_read(self.pc + 1) 
+            self.operand_b = self.ram_read(self.pc + 2) 
             
             #update program counter
+
+            self.branch_table[ir]()
             
-            #self.pc += 1 + (command >> 6)
-            add_counter = (int(command, 2) >> 6) + 1
+            # add_counter = (int(command, 2) >> 6) + 1
            
-            if command == LDI:
-                self.reg[operand_a] = operand_b
+            # if command == LDI:
+            #     self.reg[operand_a] = operand_b
             
-            elif command == MUL:
-                self.alu("MUL", operand_a, operand_b)
+            # elif command == MUL:
+            #     self.alu("MUL", operand_a, operand_b)
 
-            elif command == PRN:
-                print(self.reg[operand_a])
+            # elif command == PRN:
+            #     print(self.reg[operand_a])
 
-            elif command == HLT:
-                self.running = False
-            
-            self.pc += add_counter  
+            # elif command == HLT:
+            #     self.running = False
 
+            # self.pc += add_counter  
+
+    def PUSH(self):
+        '''
+        Push the value in the given register on the stack.
+        1. Decrement the stack.
+        2. Copy the value in the given register to the address pointed to by
+        stack.
+        '''
+        # self.reg[7] -= 1 #decrement stack pointer
+        # # sp = self.reg[7]
+
+        # # Push the value in the given register on the stack.
+        # # First operand is address of register holding value 
+        # value = self.reg[self.operand_a]
+        # #put in memory
+        # self.ram[sp] = value
+
+        self.sp -= 1
+
+        # Push the value in the given register on the stack.
+        value = self.reg[self.operand_a]
+        self.ram[self.sp] = value
+        self.pc += 2
+       
+    #def POP(self, reg_address, _):
+    def POP(self):
+        '''
+        Pop the value at the top of the stack into the given register.
+        1. Copy the value from the address pointed to by `SP` to the given register.
+        2. Increment Stack.
+        '''
+        # sp = self.reg[7]
+        # value = self.ram[sp]
+        # #self.reg[reg_address] = value
+        # self.reg[self.operand_a] = value
+        # self.reg[7] += 1
+
+        value = self.ram[self.sp]
+
+        self.reg[self.operand_a] = value
+        self.sp += 1
+        self.pc += 2
+    
+    def CALL(self, return_address, operand_a):
+        #decrement the SP 
+        self.reg[7] =- 1
+        sp = self.reg[7]
+        
+        # get address for RET
+        return_address = self.pc + 2
+
+        #put in memory 
+        self.ram[sp] = return_address
+
+        # Step 2
+        destination_address = self.reg[operand_a]
+        self.pc = destination_address
+
+    
+    def RET(self, _):
+        #pop from stack
+        sp = self.reg[7]
+        value = self.ram[sp]
+
+        #set pc to value popped from the stack 
+        self.pc = value 
+        self.reg[7] += 1
