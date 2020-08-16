@@ -11,7 +11,7 @@ class CPU:
         self.reg = [0] * 8 # Registers
         self.pc = 0 # Program Counter
         self.sp = self.reg[7] # Stack pointer.
-        self.reg[7] = '0xF4'
+        self.reg[7] = 0xF4
         self.running = True
         # self.HLT = '1'
         # self.LDI = '10000010'
@@ -71,6 +71,53 @@ class CPU:
         '''
         self.alu("ADD", self.operand_a, self.operand_b)
         self.pc += 3
+
+    def PUSH(self):
+        '''
+        Push the value in the given register on the stack.
+        1. Decrement the stack.
+        2. Copy the value in the given register to the address pointed to by
+        stack.
+        '''
+        self.sp -= 1  #decrement stack pointer
+
+        # Push the value in the given register on the stack.
+        # First operand is address of register holding value 
+        value = self.reg[self.operand_a]
+        # #put in memory
+        self.ram[self.sp] = value
+        self.pc += 2
+       
+    def POP(self):
+        '''
+        Pop the value at the top of the stack into the given register.
+        1. Copy the value from the address pointed to by `SP` to the given register.
+        2. Increment Stack.
+        '''
+        value = self.ram[self.sp]
+
+        self.reg[self.operand_a] = value
+        self.sp += 1
+        self.pc += 2
+
+    def RET(self):
+        #pop from stack
+        value = self.ram[self.sp]
+        #set pc to value popped from the stack 
+        self.sp += 1
+        self.pc = value
+
+    
+    def CALL(self):
+        # Get address to the instruction directly after CALL
+        value = self.pc + 2
+
+        # Push to stack #decrement the SP 
+        self.sp -= 1
+        self.ram[self.sp] = value
+        
+        # PC is set to the address stored in the given register
+        self.pc = self.reg[self.operand_a]
 
     def load(self):
         """Load a program into memory."""
@@ -188,69 +235,4 @@ class CPU:
 
             # self.pc += add_counter  
 
-    def PUSH(self):
-        '''
-        Push the value in the given register on the stack.
-        1. Decrement the stack.
-        2. Copy the value in the given register to the address pointed to by
-        stack.
-        '''
-        # self.reg[7] -= 1 #decrement stack pointer
-        # # sp = self.reg[7]
-
-        # # Push the value in the given register on the stack.
-        # # First operand is address of register holding value 
-        # value = self.reg[self.operand_a]
-        # #put in memory
-        # self.ram[sp] = value
-
-        self.sp -= 1
-
-        # Push the value in the given register on the stack.
-        value = self.reg[self.operand_a]
-        self.ram[self.sp] = value
-        self.pc += 2
-       
-    #def POP(self, reg_address, _):
-    def POP(self):
-        '''
-        Pop the value at the top of the stack into the given register.
-        1. Copy the value from the address pointed to by `SP` to the given register.
-        2. Increment Stack.
-        '''
-        # sp = self.reg[7]
-        # value = self.ram[sp]
-        # #self.reg[reg_address] = value
-        # self.reg[self.operand_a] = value
-        # self.reg[7] += 1
-
-        value = self.ram[self.sp]
-
-        self.reg[self.operand_a] = value
-        self.sp += 1
-        self.pc += 2
-    
-    def CALL(self, return_address, operand_a):
-        #decrement the SP 
-        self.reg[7] =- 1
-        sp = self.reg[7]
-        
-        # get address for RET
-        return_address = self.pc + 2
-
-        #put in memory 
-        self.ram[sp] = return_address
-
-        # Step 2
-        destination_address = self.reg[operand_a]
-        self.pc = destination_address
-
-    
-    def RET(self, _):
-        #pop from stack
-        sp = self.reg[7]
-        value = self.ram[sp]
-
-        #set pc to value popped from the stack 
-        self.pc = value 
-        self.reg[7] += 1
+   
