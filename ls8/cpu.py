@@ -13,6 +13,9 @@ class CPU:
         self.sp = self.reg[7] # Stack pointer.
         self.reg[7] = 0xF4
         self.running = True
+        self.equal = 0
+        self.greater = 0 
+        self.less = 0
         # self.HLT = '1'
         # self.LDI = '10000010'
         # self.PRN = '1000111'
@@ -35,6 +38,10 @@ class CPU:
             0b01010000: self.CALL,
             0b00010001: self.RET,
             0b10100000: self.ADD,
+            0b10100111: self.CMP, 
+            0b01010100: self.JMP, 
+            0b01010101: self.JEQ, 
+            0b01010110: self.JNE,
         }
 
     def HLT(self):
@@ -71,6 +78,19 @@ class CPU:
         '''
         self.alu("ADD", self.operand_a, self.operand_b)
         self.pc += 3
+    
+    def CMP(self):
+        '''
+        Compare the values in two registers.
+        * If they are equal, set the Equal `E` flag to 1, otherwise set it to 0.
+        * If registerA is less than registerB, set the Less-than `L` flag to 1,
+        otherwise set it to 0.
+        * If registerA is greater than registerB, set the Greater-than `G` flag
+        to 1, otherwise set it to 0.
+        '''
+        self.alu("CMP", self.operand_a, self.operand_b)
+        self.pc += 3
+       
 
     def PUSH(self):
         '''
@@ -118,6 +138,34 @@ class CPU:
         
         # PC is set to the address stored in the given register
         self.pc = self.reg[self.operand_a]
+    
+    def JMP(self):
+        '''
+        Jump to the address stored in the given register.
+        Set the PC to the address stored in the given register
+        '''
+        jump = self.reg[self.operand_a]
+        self.pc = jump
+    
+    def JNE(self):
+        '''
+        If E flag is clear (false, 0), jump to the address stored in the given register.
+        '''
+        if not self.equal:
+            jump = self.reg[self.operand_a]
+            self.pc = jump 
+        else: 
+            self.pc += 2
+    
+    def JEQ(self):
+        '''
+        If equal flag is set (true), jump to the address stored in the given register.
+        '''
+        if self.equal: 
+            jump = self.reg[self.operand_a]
+            self.pc = jump 
+        else: 
+            self.pc += 2
 
     def load(self):
         """Load a program into memory."""
@@ -168,6 +216,23 @@ class CPU:
         #elif op == "SUB": etc
         elif op == "MUL":
             self.reg[reg_a] *= self.reg[reg_b]
+        elif op == "CMP":
+            self.equal = 0
+            self.less = 0
+            self.greater = 0
+        
+        #Compare the values in two registers.
+        #If they are equal, set the Equal `E` flag to 1, otherwise set it to 0.
+        #If registerA is less than registerB, set the Less-than `L` flag to 1,
+       # otherwise set it to 0.
+        #If registerA is greater than registerB, set the Greater-than `G` flag
+        #to 1, otherwise set it to 0.
+        if self.reg[reg_a] == self.reg[reg_b]:   
+                self.equal += 1
+        elif self.reg[reg_a] < self.reg[reg_b]:
+                self.less += 1
+        elif self.reg[reg_a] > self.reg[reg_b]:
+                self.greater += 1
         else:
             raise Exception("Unsupported ALU operation")
     
